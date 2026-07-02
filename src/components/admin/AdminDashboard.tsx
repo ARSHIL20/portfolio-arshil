@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type {
   SiteContent, Project, Skill, JourneyEntry, Certification, Highlight, GalleryItem,
 } from "@/lib/portfolio-types";
+import { resolveAvatarUrl, resolveCertificationAssets, resolvePublicAssetUrl } from "@/lib/utils";
 
 type Tab = "content" | "projects" | "skills" | "journey" | "certifications" | "highlights" | "gallery";
 const TABS: { id: Tab; label: string }[] = [
@@ -120,7 +121,7 @@ function ContentEditor() {
       <Card>
         <Label>Admin photo</Label>
         <div className="flex items-center gap-4">
-          {c.avatar_url && <img src={c.avatar_url} alt="" className="w-20 h-20 object-cover border border-border" />}
+          <img src={resolveAvatarUrl(c.avatar_url)} alt="" className="w-20 h-20 object-cover border border-border" />
           <input type="file" accept="image/*" onChange={onAvatar} className="text-sm" />
           {c.avatar_url && <BtnGhost type="button" onClick={() => set("avatar_url", null)}>Remove</BtnGhost>}
         </div>
@@ -345,7 +346,7 @@ function CertificationsEditor() {
             <div className="sm:col-span-2"><Label>Issuer</Label><Input value={d.issuer ?? ""} onChange={(e) => setD({ ...d, issuer: e.target.value })} /></div>
             <div><Label>Certificate file (PDF / doc / image)</Label><input type="file" accept="image/*,application/pdf,.doc,.docx,.ppt,.pptx" onChange={uploadCert} className="text-sm" /></div>
             <div className="sm:col-span-2"><Label>Thumbnail image (optional, for non-image files)</Label><input type="file" accept="image/*" onChange={uploadThumb} className="text-sm" /></div>
-            {d.image_url && <div><img src={d.image_url} alt="" className="h-24 object-cover border border-border" /></div>}
+            {d.image_url && <div><img src={resolvePublicAssetUrl(d.image_url) ?? d.image_url} alt="" className="h-24 object-cover border border-border" /></div>}
             {d.file_url && !d.file_type?.startsWith("image/") && <div className="text-[11px] font-mono uppercase tracking-wider text-warm">File uploaded: {d.file_type}</div>}
           </Grid>
           <div className="mt-4"><Btn type="submit">Add</Btn></div>
@@ -357,6 +358,7 @@ function CertificationsEditor() {
 }
 function CertRow({ row, onSave, onDelete }: { row: Certification; onSave: (r: Certification) => void; onDelete: () => void }) {
   const [r, setR] = useState(row);
+  const assets = resolveCertificationAssets(r);
   const uploadCert = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
     const res = await uploadFile(f);
@@ -377,8 +379,23 @@ function CertRow({ row, onSave, onDelete }: { row: Certification; onSave: (r: Ce
         <div className="sm:col-span-2"><Label>Issuer</Label><Input value={r.issuer ?? ""} onChange={(e) => setR({ ...r, issuer: e.target.value })} /></div>
         <div><Label>Replace file</Label><input type="file" accept="image/*,application/pdf,.doc,.docx,.ppt,.pptx" onChange={uploadCert} className="text-sm" /></div>
         <div className="sm:col-span-2"><Label>Replace thumbnail</Label><input type="file" accept="image/*" onChange={uploadThumb} className="text-sm" /></div>
-        {r.image_url && <div><img src={r.image_url} alt="" className="h-24 object-cover border border-border" /></div>}
-        {r.file_url && <div className="sm:col-span-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground break-all">File: <a href={r.file_url} target="_blank" rel="noreferrer" className="text-warm hover:underline">open ({r.file_type ?? "file"})</a></div>}
+        {(assets.previewUrl || r.image_url) && (
+          <div>
+            <img
+              src={assets.previewUrl ?? resolvePublicAssetUrl(r.image_url) ?? r.image_url ?? ""}
+              alt=""
+              className="h-24 object-cover border border-border"
+            />
+          </div>
+        )}
+        {assets.linkUrl && (
+          <div className="sm:col-span-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground break-all">
+            File:{" "}
+            <a href={assets.linkUrl} target="_blank" rel="noreferrer" className="text-warm hover:underline">
+              open ({assets.fileType ?? r.file_type ?? "file"})
+            </a>
+          </div>
+        )}
       </Grid>
       <RowActions onSave={() => onSave(r)} onDelete={onDelete} />
 

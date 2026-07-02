@@ -5,6 +5,7 @@ import { Reveal } from "./Reveal";
 import type {
   SiteContent, Project, Skill, JourneyEntry, Certification, Highlight,
 } from "@/lib/portfolio-types";
+import { resolveAvatarUrl, resolveCertificationAssets } from "@/lib/utils";
 
 export function Portfolio() {
   const [content, setContent] = useState<SiteContent | null>(null);
@@ -100,16 +101,14 @@ export function Portfolio() {
           <p className="text-[15px] md:text-[17px] leading-relaxed text-muted-foreground">
             {content.about_body}
           </p>
-          {content.avatar_url && (
           <div className="relative max-w-sm mx-auto md:mx-0">
             <img
-              src={content.avatar_url}
+              src={resolveAvatarUrl(content.avatar_url)}
               alt={`${content.hero_first_name} ${content.hero_last_name}`}
               className="w-full aspect-[4/5] object-cover rounded-sm border border-border transition-transform duration-500 hover:scale-[1.02] active:scale-[0.98]"
             />
             <div className="absolute -bottom-3 -right-3 w-24 h-24 border border-warm/40 rounded-sm -z-10" />
           </div>
-          )}
         </div>
         <div className="mt-14 grid grid-cols-3 gap-4 md:gap-8 border-t border-border pt-10">
           <Stat n={content.stats_projects} label="Projects shipped" />
@@ -199,17 +198,14 @@ export function Portfolio() {
           <h3 className="display text-[clamp(1.5rem,3.5vw,2.5rem)] mt-3">Certifications.</h3>
           <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {certs.map((c, idx) => {
-              const target = c.file_url ?? c.image_url ?? null;
-              const isImage = !c.file_type || c.file_type.startsWith("image/");
-              const preview = c.image_url ?? (isImage ? c.file_url : null);
-              const Wrap: any = target ? "a" : "div";
-              const wrapProps = target
-                ? { href: target, target: "_blank", rel: "noreferrer" }
-                : {};
+              const { linkUrl: target, previewUrl: preview, fileType } = resolveCertificationAssets(c);
               return (
                 <Reveal key={c.id} delay={((idx % 3) as 0 | 1 | 2)}>
-                <Wrap
-                  {...wrapProps}
+                <a
+                  href={target ?? undefined}
+                  target={target ? "_blank" : undefined}
+                  rel={target ? "noopener noreferrer" : undefined}
+                  aria-label={target ? `Open ${c.title} certificate` : undefined}
                   className="group block border border-border bg-surface/40 p-4 transition-all duration-300 hover:border-warm hover:bg-surface/70 hover:-translate-y-1 hover:shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)] active:border-warm active:bg-surface/70 active:-translate-y-0.5 active:shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)] cursor-pointer"
                 >
                   <div className="mb-3 aspect-[4/3] overflow-hidden border border-border bg-gradient-to-br from-surface/60 to-background flex items-center justify-center relative">
@@ -218,14 +214,14 @@ export function Portfolio() {
                     ) : (
                       <div className="text-center px-3 flex flex-col items-center gap-2">
                         <div className="text-5xl transition-transform duration-300 group-hover:scale-110 group-active:scale-105">
-                          {iconForFileType(c.file_type)}
+                          {iconForFileType(fileType)}
                         </div>
                         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-warm">
-                          {labelForFileType(c.file_type)}
+                          {labelForFileType(fileType)}
                         </div>
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-warm/0 group-hover:bg-warm/5 group-active:bg-warm/10 transition-colors" />
+                    <div className="absolute inset-0 bg-warm/0 group-hover:bg-warm/5 group-active:bg-warm/10 transition-colors pointer-events-none" />
                   </div>
                   <h4 className="display text-[15px] leading-tight group-hover:text-warm group-active:text-warm transition-colors">{c.title}</h4>
                   {c.issuer && <p className="mt-1.5 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">{c.issuer}</p>}
@@ -234,7 +230,7 @@ export function Portfolio() {
                       View →
                     </span>
                   )}
-                </Wrap>
+                </a>
                 </Reveal>
               );
             })}
